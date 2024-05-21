@@ -14,11 +14,6 @@
 // Initialise step counting
 void original_stepcount_init();
 
-/** Sets new thresholds for the algorithm
- *
- */
-void original_stepcount_setThresholds(int threLow, int threHigh);
-
 /* Registers a new data point for step counting. Data is expected
  * as 12.5Hz, 8192=1g, and accMagSquared = x*x + y*y + z*z
  *
