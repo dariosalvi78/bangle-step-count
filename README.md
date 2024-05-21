@@ -17,7 +17,7 @@ Total difference in steps between expected and calculated is shown.
 * `expected` = what we expect
 * `orig` = step count based on the most trivial step counter
 
-Type `make && ./main --bruteforce` to run a brute-force check for all
+Type `make tuneEspruino && ./tuneEspruino --bruteforce` to run a brute-force check for all
 possible values using the offline data from `data`. You can then feed
 these back into `stepcount.c`
 
