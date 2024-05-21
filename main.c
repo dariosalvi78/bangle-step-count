@@ -122,6 +122,7 @@ void testStepCount(char *filename, char *outfile)
     if (first)
     {
       first = false;
+      // skip computing steps on the very first value
       continue;
     }
     int origStepCounterP = origStepCounter;
@@ -200,50 +201,7 @@ int main(int argc, char *argv[])
   printf("github.com/gfwilliams/step-count\n");
   printf("----------------------------------\n");
 
-  bool bruteForce = false;
-  // printf("argc %d\n",argc);
-  if (argc > 1)
-  {
-    if (strcmp(argv[1], "--bruteforce") == 0)
-    { // match
-      bruteForce = true;
-    }
-    else
-    {
-      printf("Unknown argument!\n\n");
-      printf("USAGE:\n");
-      printf(" ./main\n");
-      printf("   Run single test on all available step data\n");
-      printf(" ./main --bruteforce\n");
-      printf("   Brute-force all available arguments on all available step data\n");
-      return 1;
-    }
-  }
-
   int d = testAll(true);
   printf("TOTAL DIFFERENCE %d\n", int_sqrt32(d));
-  // =======================
-  // comment this out to brute-force over the data to find the best coefficients
-  if (!bruteForce)
-    return 0;
-  // =======================
-  int bestDiff = 0xFFFFFFF;
-  int best_stepCounterThreshold = 0;
-
-  for (stepCounterThreshold = STEPCOUNTERTHRESHOLD_MIN; stepCounterThreshold <= STEPCOUNTERTHRESHOLD_MAX; stepCounterThreshold += STEPCOUNTERTHRESHOLD_STEP)
-  {
-    printf("testing %d \n", stepCounterThreshold);
-    int d = testAll(false);
-    if (d < bestDiff)
-    {
-      printf("           BEST %d\n", d);
-      bestDiff = d;
-      best_stepCounterThreshold = stepCounterThreshold;
-    }
-  }
-
-  printf("best difference %d\n", int_sqrt32(d));
-  printf("stepCounterThreshold %d\n", best_stepCounterThreshold);
-
   return 0;
 }
