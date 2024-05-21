@@ -68,31 +68,31 @@ logs that are done over a longer time period)
 /// squared accelerometer magnitude
 int accMagSquared, accMag;
 
-uint32_t espruino_stepCounter = 0;
-uint32_t original_stepCounter = 0;
-uint32_t dummy_stepCounter = 0;
+uint32_t espruino_tot_steps = 0;
+uint32_t original_tot_steps = 0;
+uint32_t dummy_tot_steps = 0;
 
 void stepCountAll(int newx, int newy, int newz)
 {
   accMagSquared = newx * newx + newy * newy + newz * newz;
 
   // Espruino step counter
-  espruino_stepCounter += stepcount_new(accMagSquared);
+  espruino_tot_steps += stepcount_new(accMagSquared);
 
   // original step counter
-  original_stepCounter = original_stepcount(accMagSquared);
+  original_tot_steps = original_stepcount(accMagSquared);
 
   // Dummy step counter
   // the interface here does not return only the new steps, but the whole counter
-  dummy_stepCounter = dummy_stepcount(accMagSquared);
+  dummy_tot_steps = dummy_stepcount(accMagSquared);
 }
 
 void testStepCount(char *filename, char *outfile)
 {
   // init
-  original_stepCounter = 0;
-  espruino_stepCounter = 0;
-  dummy_stepCounter = 0;
+  original_tot_steps = 0;
+  espruino_tot_steps = 0;
+  dummy_tot_steps = 0;
 
   // init step counter algos
   stepcount_init();
@@ -125,14 +125,14 @@ void testStepCount(char *filename, char *outfile)
       continue;
     }
     int origStepCounterP = origStepCounter;
-    int stepCounterP = espruino_stepCounter;
+    int stepCounterP = espruino_tot_steps;
     stepCountAll(x, y, z);
 
     if (fop)
     {
       int M = 6000;
-      int a = (origStepCounter - origStepCounterP) * 500 + M;   // old - high
-      int b = -(espruino_stepCounter - stepCounterP) * 500 - M; // new - low
+      int a = (origStepCounter - origStepCounterP) * 500 + M; // old - high
+      int b = -(espruino_tot_steps - stepCounterP) * 500 - M; // new - low
       fprintf(fop, "%d,%d,%d,%d,%d,%d,%d,%d,%d\n", n++, x, y, z, accScaled << 6, accFiltered, a, b, stepCounterThreshold);
     }
   }
@@ -140,13 +140,13 @@ void testStepCount(char *filename, char *outfile)
   for (int i = 0; i < ACCELFILTER_TAP_NUM; i++)
   {
     int origStepCounterP = origStepCounter;
-    int stepCounterP = espruino_stepCounter;
+    int stepCounterP = espruino_tot_steps;
     stepCountAll(x, y, z);
     if (fop)
     {
       int M = 6000;
-      int a = (origStepCounter - origStepCounterP) * 500 + M;   // old - high
-      int b = -(espruino_stepCounter - stepCounterP) * 500 - M; // new - low
+      int a = (origStepCounter - origStepCounterP) * 500 + M; // old - high
+      int b = -(espruino_tot_steps - stepCounterP) * 500 - M; // new - low
       fprintf(fop, "%d,%d,%d,%d,%d,%d,%d,%d,%d\n", n++, x, y, z, accScaled << 6, accFiltered, a, b, stepCounterThreshold);
     }
   }
@@ -180,14 +180,14 @@ static int testAll(bool outputFiles)
     // work out accuracy %
     float pc;
     if (EXPECTED_STEPS[fileCnt] != 0)
-      pc = (100 * (float)espruino_stepCounter / (float)EXPECTED_STEPS[fileCnt]);
+      pc = (100 * (float)espruino_tot_steps / (float)EXPECTED_STEPS[fileCnt]);
     else
       pc = 0.00;
 
     if (outputFiles)
       printf("%s, %d, %d, %d, %d\n", FILES[fileCnt], EXPECTED_STEPS[fileCnt],
-             espruino_stepCounter, original_stepCounter, dummy_stepCounter);
-    int d = espruino_stepCounter - EXPECTED_STEPS[fileCnt];
+             espruino_tot_steps, original_tot_steps, dummy_tot_steps);
+    int d = espruino_tot_steps - EXPECTED_STEPS[fileCnt];
     differences += d * d * HOWMUCH[fileCnt];
     fileCnt++;
   }
