@@ -65,16 +65,13 @@ logs that are done over a longer time period)
 #include "./algos/dummy/dummyStepCounter.c"
 #include "./algos/original/originalStepCounter.c"
 
-/// squared accelerometer magnitude
-int accMagSquared, accMag;
-
 uint32_t espruino_tot_steps = 0;
 uint32_t original_tot_steps = 0;
 uint32_t dummy_tot_steps = 0;
 
-void stepCountAll(int newx, int newy, int newz)
+void feedStepCounters(int newx, int newy, int newz)
 {
-  accMagSquared = newx * newx + newy * newy + newz * newz;
+  int accMagSquared = newx * newx + newy * newy + newz * newz;
 
   // Espruino step counter
   espruino_tot_steps += stepcount_new(accMagSquared);
@@ -83,11 +80,10 @@ void stepCountAll(int newx, int newy, int newz)
   original_tot_steps = original_stepcount(accMagSquared);
 
   // Dummy step counter
-  // the interface here does not return only the new steps, but the whole counter
   dummy_tot_steps = dummy_stepcount(accMagSquared);
 }
 
-void testStepCount(char *filename, char *outfile)
+void testStepCounters(char *filename)
 {
   // init
   original_tot_steps = 0;
@@ -105,12 +101,7 @@ void testStepCount(char *filename, char *outfile)
   int read;
   int n = 0;
   FILE *fp = fopen(filename, "r");
-  FILE *fop = 0;
-  if (outfile)
-  {
-    fop = fopen(outfile, "w");
-    fprintf(fop, "n,x,y,z,scaled,filtered,origSteps,steps,thresh\n");
-  }
+
   int x, y, z;
   bool first = true;
   while ((read = getline(&line, &len, fp)) != -1)
@@ -127,47 +118,26 @@ void testStepCount(char *filename, char *outfile)
     }
     int origStepCounterP = origStepCounter;
     int stepCounterP = espruino_tot_steps;
-    stepCountAll(x, y, z);
-
-    if (fop)
-    {
-      int M = 6000;
-      int a = (origStepCounter - origStepCounterP) * 500 + M; // old - high
-      int b = -(espruino_tot_steps - stepCounterP) * 500 - M; // new - low
-      fprintf(fop, "%d,%d,%d,%d,%d,%d,%d,%d,%d\n", n++, x, y, z, accScaled << 6, accFiltered, a, b, stepCounterThreshold);
-    }
+    feedStepCounters(x, y, z);
   }
   // ensure we flush filter to get final steps out
-  for (int i = 0; i < ACCELFILTER_TAP_NUM; i++)
+  for (int i = 0; i < 10; i++)
   {
     int origStepCounterP = origStepCounter;
     int stepCounterP = espruino_tot_steps;
-    stepCountAll(x, y, z);
-    if (fop)
-    {
-      int M = 6000;
-      int a = (origStepCounter - origStepCounterP) * 500 + M; // old - high
-      int b = -(espruino_tot_steps - stepCounterP) * 500 - M; // new - low
-      fprintf(fop, "%d,%d,%d,%d,%d,%d,%d,%d,%d\n", n++, x, y, z, accScaled << 6, accFiltered, a, b, stepCounterThreshold);
-    }
+    feedStepCounters(x, y, z);
   }
-  if (fop)
-    fclose(fop);
   fclose(fp);
   if (line)
     free(line);
 }
 
-static int testAll(bool outputFiles)
+static void testAll()
 {
   int fileCnt = 0;
   int differences = 0;
-  // show the config and output format
-  if (outputFiles)
-  {
-    printf("X_STEPS = %d, RAW_THRESHOLD = %d\n", X_STEPS, RAW_THRESHOLD);
-    printf("File, Expected, Espruino, Original, Dummy\n");
-  }
+
+  printf("File, Expected, Espruino, Original, Dummy\n");
   while (fileCnt < FILECOUNT)
   {
     char buf[256], obuf[256];
@@ -176,24 +146,12 @@ static int testAll(bool outputFiles)
     strcpy(obuf, buf);
     strcat(obuf, ".out.csv");
     // if (outputFiles) printf("VVV %s\n", FILES[fileCnt]);
-    testStepCount(buf, outputFiles ? obuf : NULL);
+    testStepCounters(buf);
 
-    // work out accuracy %
-    float pc;
-    if (EXPECTED_STEPS[fileCnt] != 0)
-      pc = (100 * (float)espruino_tot_steps / (float)EXPECTED_STEPS[fileCnt]);
-    else
-      pc = 0.00;
-
-    if (outputFiles)
-      printf("%s, %d, %d, %d, %d\n", FILES[fileCnt], EXPECTED_STEPS[fileCnt],
-             espruino_tot_steps, original_tot_steps, dummy_tot_steps);
-    int d = espruino_tot_steps - EXPECTED_STEPS[fileCnt];
-    differences += d * d * HOWMUCH[fileCnt];
+    printf("%s, %d, %d, %d, %d\n", FILES[fileCnt], EXPECTED_STEPS[fileCnt],
+           espruino_tot_steps, original_tot_steps, dummy_tot_steps);
     fileCnt++;
   }
-
-  return differences;
 }
 
 int main(int argc, char *argv[])
@@ -201,48 +159,7 @@ int main(int argc, char *argv[])
   printf("github.com/gfwilliams/step-count\n");
   printf("----------------------------------\n");
 
-  bool bruteForce = false;
-  // printf("argc %d\n",argc);
-  if (argc > 1)
-  {
-    if (strcmp(argv[1], "--bruteforce") == 0)
-    { // match
-      bruteForce = true;
-    }
-    else
-    {
-      printf("Unknown argument!\n\n");
-      printf("USAGE:\n");
-      printf(" ./main\n");
-      printf("   Run single test on all available step data\n");
-      return 1;
-    }
-  }
-
-  int d = testAll(true);
-  printf("TOTAL DIFFERENCE %d\n", int_sqrt32(d));
-  // =======================
-  // comment this out to brute-force over the data to find the best coefficients
-  if (!bruteForce)
-    return 0;
-  // =======================
-  int bestDiff = 0xFFFFFFF;
-  int best_stepCounterThreshold = 0;
-
-  for (stepCounterThreshold = STEPCOUNTERTHRESHOLD_MIN; stepCounterThreshold <= STEPCOUNTERTHRESHOLD_MAX; stepCounterThreshold += STEPCOUNTERTHRESHOLD_STEP)
-  {
-    printf("testing %d \n", stepCounterThreshold);
-    int d = testAll(false);
-    if (d < bestDiff)
-    {
-      printf("           BEST %d\n", d);
-      bestDiff = d;
-      best_stepCounterThreshold = stepCounterThreshold;
-    }
-  }
-
-  printf("best difference %d\n", int_sqrt32(d));
-  printf("stepCounterThreshold %d\n", best_stepCounterThreshold);
+  testAll();
 
   return 0;
 }
