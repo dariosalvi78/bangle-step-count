@@ -63,6 +63,7 @@ logs that are done over a longer time period)
 
 #include "../Espruino/libs/misc/stepcount.c"
 #include "./algos/dummy/dummyStepCounter.c"
+#include "./algos/original/originalStepCounter.c"
 
 typedef struct
 {
@@ -74,16 +75,10 @@ Vector3 acc;
 /// squared accelerometer magnitude
 int accMagSquared, accMag;
 uint32_t espruino_stepCounter = 0;
+uint32_t original_stepCounter = 0;
 uint32_t dummy_stepCounter = 0;
 
-bool origStepWasLow;
-/// How low must acceleration magnitude squared get before we consider the next rise a step?
-int origStepCounterThresholdLow = (8192 - 80) * (8192 - 80);
-/// How high must acceleration magnitude squared get before we consider it a step?
-int origStepCounterThresholdHigh = (8192 + 80) * (8192 + 80);
-int origStepCounter = 0;
-
-void stepCount(int newx, int newy, int newz)
+void stepCountAll(int newx, int newy, int newz)
 {
   int dx = newx - acc.x;
   int dy = newy - acc.y;
@@ -93,19 +88,13 @@ void stepCount(int newx, int newy, int newz)
   acc.z = newz;
   accMagSquared = acc.x * acc.x + acc.y * acc.y + acc.z * acc.z;
 
-  // original step counter
-  if (accMagSquared < origStepCounterThresholdLow)
-    origStepWasLow = true;
-  else if ((accMagSquared > origStepCounterThresholdHigh) && origStepWasLow)
-  {
-    origStepWasLow = false;
-    origStepCounter++;
-  }
   // Espruino step counter
   espruino_stepCounter += stepcount_new(accMagSquared);
 
+  // original step counter
+  original_stepCounter = original_stepcount(accMagSquared);
+
   // Dummy step counter
-  dummy_stepCounter += dummy_stepcount_new(accMagSquared);
   // the interface here does not return only the new steps, but the whole counter
   dummy_stepCounter = dummy_stepcount(accMagSquared);
 }
@@ -113,14 +102,13 @@ void stepCount(int newx, int newy, int newz)
 void testStepCount(char *filename, char *outfile)
 {
   // init
-  origStepCounter = 0;
-  origStepWasLow = 0;
+  original_stepCounter = 0;
   espruino_stepCounter = 0;
   dummy_stepCounter = 0;
 
   // init step counter algos
   stepcount_init();
-
+  original_stepcount_init();
   dummy_stepcount_init();
 
   // go
@@ -150,7 +138,7 @@ void testStepCount(char *filename, char *outfile)
     }
     int origStepCounterP = origStepCounter;
     int stepCounterP = espruino_stepCounter;
-    stepCount(x, y, z);
+    stepCountAll(x, y, z);
 
     if (fop)
     {
@@ -165,7 +153,7 @@ void testStepCount(char *filename, char *outfile)
   {
     int origStepCounterP = origStepCounter;
     int stepCounterP = espruino_stepCounter;
-    stepCount(x, y, z);
+    stepCountAll(x, y, z);
     if (fop)
     {
       int M = 6000;
@@ -210,7 +198,7 @@ static int testAll(bool outputFiles)
 
     if (outputFiles)
       printf("%s, %d, %d, %d, %d\n", FILES[fileCnt], EXPECTED_STEPS[fileCnt],
-             espruino_stepCounter, 0, dummy_stepCounter);
+             espruino_stepCounter, original_stepCounter, dummy_stepCounter);
     int d = espruino_stepCounter - EXPECTED_STEPS[fileCnt];
     differences += d * d * HOWMUCH[fileCnt];
     fileCnt++;
