@@ -65,28 +65,16 @@ logs that are done over a longer time period)
 #include "./algos/dummy/dummyStepCounter.c"
 #include "./algos/original/originalStepCounter.c"
 
-typedef struct
-{
-  short x, y, z;
-} Vector3;
-
-/// accelerometer data
-Vector3 acc;
 /// squared accelerometer magnitude
 int accMagSquared, accMag;
+
 uint32_t espruino_stepCounter = 0;
 uint32_t original_stepCounter = 0;
 uint32_t dummy_stepCounter = 0;
 
 void stepCountAll(int newx, int newy, int newz)
 {
-  int dx = newx - acc.x;
-  int dy = newy - acc.y;
-  int dz = newz - acc.z;
-  acc.x = newx;
-  acc.y = newy;
-  acc.z = newz;
-  accMagSquared = acc.x * acc.x + acc.y * acc.y + acc.z * acc.z;
+  accMagSquared = newx * newx + newy * newy + newz * newz;
 
   // Espruino step counter
   espruino_stepCounter += stepcount_new(accMagSquared);
