@@ -106,6 +106,8 @@ void stepCount(int newx, int newy, int newz)
 
   // Dummy step counter
   dummy_stepCounter += dummy_stepcount_new(accMagSquared);
+  // the interface here does not return only the new steps, but the whole counter
+  dummy_stepCounter = dummy_stepcount(accMagSquared);
 }
 
 void testStepCount(char *filename, char *outfile)

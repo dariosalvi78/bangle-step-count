@@ -8,6 +8,9 @@
  * ----------------------------------------------------------------------------
  */
 
+#ifndef DUMMY_STEP_COUNTER
+#define DUMMY_STEP_COUNTER
+
 /// Initialise step counting
 void dummy_stepcount_init();
 
@@ -16,4 +19,6 @@ void dummy_stepcount_init();
  *
  * Returns the number of steps counted for this accel interval
  */
-int dummy_stepcount_new(int accMagSquared);
+int dummy_stepcount(int accMagSquared);
+
+#endif

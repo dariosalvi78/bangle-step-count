@@ -23,13 +23,14 @@ void dummy_stepcount_init()
  *
  * Returns the number of steps counted for this accel interval
  */
-int dummy_stepcount_new(int accMagSquared)
+int dummy_stepcount(int accMagSquared)
 {
     // keeps track of how many samples have been taken -> we can derive time passed
     dummy_samples_counter++;
 
-    if ((dummy_samples_counter % (int)(steps_per_sec * 12.5)) == 0)
-        return 1;
-    else
-        return 0;
+    // time passed in seconds since the start
+    float timepassed_secs = (float)dummy_samples_counter / 12.5;
+
+    // dummy step counter: simply moltiply time by a step rate
+    return (timepassed_secs * steps_per_sec);
 }
